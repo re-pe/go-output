@@ -1,0 +1,260 @@
+package main
+
+import (
+	"github.com/fatih/color"
+	"fmt"
+	"log"
+	"math"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+) 
+
+const (
+	BREAKPOINT = "breakpoint"
+	
+	cS         = "S"
+	cLn        = "Ln"
+	cF         = "F"
+)
+
+type DOData struct{
+	color color.Attribute
+	first string
+	last string
+}
+
+type DOList map[string]DOData
+
+type Environment struct {
+	Initialized bool
+	LogFile *os.File
+	flagDebug bool
+	flagVerbose bool
+	states int
+	canBePrinted map[string]bool
+	allowedToPrint map[string]bool
+	debOutputList DOList
+}
+
+var Env Environment
+
+func ToInt(str string, base int) int {
+	if ui, err := strconv.ParseUint(str, base, 32); err != nil {
+		panic(err)
+	} else {
+		return int(ui)
+	}
+}
+
+func (env *Environment) Init(logFileName string, flagDebug bool, flagVerbose bool, states int) error {
+	if env.Initialized {
+		panic(fmt.Errorf("Environment is already initialized!"))
+	}
+	logDirName := filepath.ToSlash(filepath.Dir(filepath.ToSlash(logFileName)))
+	err := os.MkdirAll(logDirName, os.ModeDir)
+	logFile, err := os.Create(logFileName)
+	if err != nil {
+		panic(err)
+	}
+
+	env.LogFile     = logFile
+	env.flagDebug   = flagDebug
+	env.flagVerbose = flagVerbose
+	env.states      = states
+	
+	env.allowedToPrint = map[string]bool{
+		"fPr"  : true,
+		"lFa"  : true,
+		"lPa"  : true,
+		"lPr"  : true,
+	}
+	env.SetCanBePrinted()
+	env.SetDebOutputList()
+	return nil
+}
+
+func (env *Environment) SetCanBePrinted() {
+	for flags := 0; flags < 9; flags++ {
+	
+		//flags := ToInt(strFlags, env.states)
+		flagDebug := int(flags / env.states)
+		flagVerbose := int(math.Mod(float64(flags), float64(env.states)))
+		outDebug := false
+		outVerbose := false
+
+		switch flagDebug {
+		case 0:
+			outDebug = true
+		case 1:
+			//if env.flagDebug == false, outDebug == true 
+			//if env.flagDebug == true,  outDebug == false 
+			outDebug = !env.flagDebug
+		case 2:
+			//if env.flagDebug == true,  outDebug == true 
+			//if env.flagDebug == false, outDebug == false 
+			outDebug = env.flagDebug
+		}
+		
+		switch flagVerbose {
+		case 0:
+			outVerbose = true
+		case 1:
+			//if env.flagVerbose == false, outVerbose == true 
+			//if env.flagVerbose == true,  outVerbose == false 
+			outVerbose = !env.flagVerbose
+		case 2:
+			//if env.flagVerbose == true,  outVerbose == true 
+			//if env.flagVerbose == false, outVerbose == false 
+			outVerbose = env.flagVerbose
+		}
+
+		strFlag  := strconv.Itoa(flagDebug) + strconv.Itoa(flagVerbose)
+		canPrint := outDebug && outVerbose
+		if env.canBePrinted == nil {
+			env.canBePrinted = map[string]bool{
+				strFlag : canPrint,
+			}
+		} else {
+			env.canBePrinted[strconv.Itoa(flagDebug) + strconv.Itoa(flagVerbose)] = outDebug && outVerbose
+		}
+	}
+}
+
+func (env *Environment) SetDebOutputList() {
+	env.debOutputList = DOList{
+		"Sep"       : DOData{ color.FgWhite, "\n----------", "----------\n" },
+		"BigSep"    : DOData{ color.FgWhite, "\n--------------------", "--------------------\n" },
+		"Output"    : DOData{ color.FgYellow, "\n----- Output", "\n" },
+		"Begin"     : DOData{ color.FgRed, "\n----- Begin", "\n" },
+		"End"       : DOData{ color.FgRed, "\n----- End", "\n" },
+		"BeginLoop" : DOData{ color.FgGreen, "\n---------- Begin loop", "\n" },
+		"EndLoop"   : DOData{ color.FgGreen, "\n---------- End loop", "\n" },
+		"Start"     : DOData{ color.FgWhite, "\n----- Start", "\n" },
+		"Finish"    : DOData{ color.FgWhite, "\n----- Finish", "\n" },
+		"BeginFunc" : DOData{ color.FgMagenta, "\n----- Begin function", "\n" },
+		"EndFunc"   : DOData{ color.FgMagenta, "\n----- End function", "\n"  },
+		"BeginProg" : DOData{ color.FgCyan, "\n---------- Begin program", "\n" },
+		"EndProg"   : DOData{ color.FgCyan, "\n---------- End program", "\n" },
+		"_default"   : DOData{ color.Attribute(0), "\n", "\n" },
+	}
+}
+
+
+func (env *Environment) CanBePrinted(strFlags string) bool {
+	strFlags = strings.Trim(strFlags, " ")
+	var (result bool; succ bool)
+	if result, succ = env.canBePrinted[strFlags]; !succ {
+		panic(fmt.Errorf("Flags is not found in env.canPrint."))
+	}
+	return result
+}
+
+func (env *Environment) AllowedToPrint(strName string) bool {
+	strName = strings.Trim(strName, " ")
+	var (result bool; succ bool)
+	if result, succ = env.allowedToPrint[strName]; !succ {
+		panic(fmt.Errorf("Function name is not found in env.allowedToPrint."))
+	}
+	return result
+}
+
+
+func Output(selector string, args ...interface{}){
+	selector = strings.Trim(selector, " ")
+	if selector == "" {
+		panic(fmt.Errorf("Selector is empty!"))
+	}
+	selectArr := strings.Split(selector, ".")
+	var colorAttr color.Attribute 
+	if len(selectArr) == 1 {
+		debOutput, succ := Env.debOutputList[selector]
+		if !succ {
+			panic(fmt.Errorf("Selector structure is wrong"))
+		}
+		colorAttr = debOutput.color
+		first := debOutput.first
+		last  := debOutput.last
+		args = append( []interface{}{first}, args... )
+		args = append( args, last )
+//_ = BREAKPOINT
+		selectArr = []string{"fPr","Ln","20"}
+	}
+	if len(selectArr) != 3 {
+		panic(fmt.Errorf("Selector structure is wrong"))
+	}
+	groupName := selectArr[0]
+	funcType  := selectArr[1]
+	strFlags  := selectArr[2]
+	allowedToPrint, succ := Env.allowedToPrint[groupName]
+	if !succ || !allowedToPrint {
+		panic(fmt.Errorf("Group of functions %s is not allowed to print!", groupName))
+	}
+	canBePrinted, succ := Env.canBePrinted[strFlags]
+	if !succ || !canBePrinted {
+		return
+	}
+_ = BREAKPOINT
+	if colorAttr > 0 {
+		color.Set(colorAttr, color.Bold)
+	}
+	ExecSelectedFunction(groupName, funcType, args...)
+	if colorAttr > 0 {
+		color.Unset()
+	}
+
+}
+
+func ExecSelectedFunction(groupName string, funcType string, args ...interface{}){
+	switch funcType {
+	case "":
+		switch groupName {
+		case "fPr" : 
+			fmt.Print(args...)
+		case "lFa" :
+			log.Fatal(args...)
+		case "lPa" :
+			log.Panic(args...)
+		case "lPr" :
+			log.Print(args...)
+		}
+	case "Ln":
+		switch groupName {
+		case "fPr" : 
+			fmt.Println(args...)
+		case "lFa" :
+			log.Fatalln(args...)
+		case "lPa" :
+			log.Panicln(args...)
+		case "lPr" :
+			log.Println(args...)
+		}
+	case "F":
+		switch groupName {
+		case "fPr" : 
+			fmt.Printf(args[0].(string), args[1:]...)
+		case "lFa" :
+			log.Fatalf(args[0].(string), args[1:]...)
+		case "lPa" :
+			log.Panicf(args[0].(string), args[1:]...)
+		case "lPr" :
+			log.Printf(args[0].(string), args[1:]...)
+		}
+	}
+}
+
+func main(){
+	const (
+		cDebug    = true
+		cVerbose  = false
+	)
+	Env.Init("_tmp/log/_settings.log", cDebug, cVerbose, 3)
+	defer Env.LogFile.Close()
+	log.SetOutput(Env.LogFile)
+	Output("fPr.Ln.00", "Test:", "Labas")
+//_ = BREAKPOINT
+	Output("fPr.F.21", "Test: [%s]", "Labas")
+//_ = BREAKPOINT
+	Output("Sep", "Test: ", "Labas")
+}
