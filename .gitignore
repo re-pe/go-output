@@ -1,2 +1,5 @@
 /.project
 /test/_tmp/*
+*.exe
+*.bat
+*.lnk
