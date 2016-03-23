@@ -67,7 +67,7 @@ func OuputInit(flagsImp *Flags){
 }
 
 func NewLogFile(fDir, fRunFile, fExt string) (logFile *os.File, err error) {
-	err = os.MkdirAll(fDir, os.ModeDir)
+	err = os.MkdirAll(fDir, os.ModeDir | 0777)
 	logFileName := filepath.Base(fRunFile)
 	logFileName  = strings.Replace(logFileName, filepath.Ext(logFileName), "", -1)
 	logFileName  = fDir + logFileName + fExt
