@@ -1,9 +1,9 @@
 package main
- 
+
 import (
-	"fmt"
+  "fmt"
   "github.com/fatih/color"
-	. "github.com/re-pe/output"
+  . "github.com/re-pe/output"
   "log"
   "os"
 )
