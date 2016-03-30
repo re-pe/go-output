@@ -9,7 +9,7 @@ import (
 )
 
 const (
-  fRunFile   = "output_test.go"
+  fRunFile   = "test.go"
   fDir       = "_tmp/log/"
   fExt       = ".log"
   BREAKPOINT = "breakpoint"
