@@ -15,6 +15,11 @@ type Flags struct {
   Verbose bool
 }
 
+type Formated struct{
+  Text string
+  Attributes []color.Attribute
+}
+
 var flags *Flags
 var attributeList map[string]color.Attribute
 
@@ -104,44 +109,43 @@ func checkFormat(args []interface{}) (format string, hasFormat bool, attributes 
   return
 }
 
-func Format(args ...interface{}) (result string){
-  format, hasFormat, _ := checkFormat(args)
+func Format(args ...interface{}) (result Formated) {
+  var (format string; hasFormat bool)
+  format, hasFormat, result.Attributes = checkFormat(args)
   if hasFormat {
-    result = fmt.Sprintf(format, args[1:]...)
+    result.Text = fmt.Sprintf(format, args[1:]...)
   } else {
-    result = fmt.Sprint(args...)
+    result.Text = fmt.Sprint(args...)
   }
   return
 }
 
 func Print(args ...interface{}) {
-  format, hasFormat, attributes := checkFormat(args)
-  if len(attributes) > 0 {
-    color.Set(attributes...)
+  formated := Format(args...)
+  if len(formated.Attributes) > 0 {
+    color.Set(formated.Attributes...)
   }
-  if hasFormat {
-    fmt.Printf(format, args[1:]...)
-  } else {
-    fmt.Print(args...)
-  }
-  if len(attributes) > 0 {
+  fmt.Print(formated.Text)
+  if len(formated.Attributes) > 0 {
     color.Unset()
   }
-
 }
 
 func Log(args ...interface{}) {
-  format, hasFormat, _ := checkFormat(args)
-  if hasFormat {
-    log.Printf(format, args[1:]...)
-  } else {
-    log.Print(args...)
-  }
+  formated := Format(args...)
+  log.Print(formated.Text)
 }
 
 func Out(args ...interface{}) {
-  Log(args...)
-  Print(args...)
+  formated := Format(args...)
+  log.Print(formated.Text)
+  if len(formated.Attributes) > 0 {
+    color.Set(formated.Attributes...)
+  }
+  fmt.Print(formated.Text)
+  if len(formated.Attributes) > 0 {
+    color.Unset()
+  }
 }
 
 func Debug(args ...interface{}) {
