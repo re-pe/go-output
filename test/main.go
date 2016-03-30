@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+  "github.com/fatih/color"
 	. "github.com/re-pe/output"
 	"log"
 	"os"
@@ -18,18 +19,30 @@ var (
 	flags       Flags
 	logFileName string
 )
-	
+
+type CAttrs []color.Attribute
+
 type Tests []struct {
 	function string // tested function name
 	input    []interface{} // input
 	expected string // expected result
+  attributes CAttrs
 }
 
 var tests Tests
 
 func OutputTests(){
 	for _, test := range tests {
-		fmt.Printf("%s: expected %s, actual ", test.function, test.expected)
+		fmt.Printf("%s: expected ", test.function)
+    
+    if len(test.attributes) > 0 {
+        color.Set(test.attributes...)
+    }
+    fmt.Print(test.expected)
+    if len(test.attributes) > 0 {
+      color.Unset()
+    }
+    fmt.Print(", actual ") 
 		switch (test.function){
 		case "Debug":
 			Debug(test.input...)
@@ -61,6 +74,7 @@ _ = BREAKPOINT
 	
 	fmt.Println("\nFile", fRunFile, "is running.\n")
 	
+	fmt.Println("\nFlags: --debug - debugging mode.\n")
 // logfailo sukūrimas
 	logFile, err := NewLogFile(fDir, fRunFile, fExt)
 	if err != nil { return }
@@ -71,10 +85,10 @@ _ = BREAKPOINT
 	log.SetOutput(logFile)
 
 	tests = Tests{
-	  {"Debug", []interface{}{"FY.B?:%s %s", "Labas", "Rytas"}, "Labas rytas"},
-	  {"Print", []interface{}{"FC.B?:%s %s", "Labas", "Rytas"}, "Labas rytas"},
-	  {"Log",   []interface{}{"Laba", " ", "Naktis"}, "Laba Naktis"},
-	  {"Out",   []interface{}{"FG.B?:%s %s", "Laba", "Naktis"}, "Laba Naktis"},
+	  {"Debug", []interface{}{"FY.B?:%s %s", "Labas", "Rytas"}, "Labas rytas", CAttrs{color.FgYellow, color.Bold}},
+	  {"Print", []interface{}{"FC.B?:%s %s", "Labas", "Rytas"}, "Labas rytas", CAttrs{color.FgCyan, color.Bold}},
+	  {"Log",   []interface{}{"Laba", " ", "Naktis"}, "Laba Naktis", CAttrs{}},
+	  {"Out",   []interface{}{"FG.B?:%s %s", "Laba", "Naktis"}, "Laba Naktis", CAttrs{color.FgGreen, color.Bold}},
 	}
 
 	OutputTests()
