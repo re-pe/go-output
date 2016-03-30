@@ -23,10 +23,10 @@ var (
 type CAttrs []color.Attribute
 
 type Tests []struct {
-  function string // tested function name
+  function string        // tested function name
   input    []interface{} // input
-  expected string // expected result
-  attributes CAttrs
+  expected string        // expected result
+  attributes CAttrs      // attributes
 }
 
 var tests Tests
@@ -62,20 +62,20 @@ func OutputTests(){
 func main() {
   args := os.Args
   for _, arg := range args {
-        switch arg {
+    switch arg {
     case "--debug" :
             flags.Debug = true
     case "--verbose" :
       flags.Verbose = true
-        }
     }
+  }
 _ = BREAKPOINT  
   OuputInit(&flags)
   
   fmt.Println("\nFile", fRunFile, "is running.\n")
   
   fmt.Println("\nFlags: --debug - debugging mode.\n")
-// logfailo sukūrimas
+// creation of logfile
   logFile, err := NewLogFile(fDir, fRunFile, fExt)
   if err != nil { return }
   logFileInfo, err := logFile.Stat()
