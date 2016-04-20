@@ -3,7 +3,7 @@ package main
 import (
   "fmt"
   "github.com/fatih/color"
-  . "github.com/re-pe/go/output"
+  . "github.com/re-pe/go-output"
   "log"
   "os"
 )
